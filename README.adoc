@@ -1,0 +1,76 @@
+[#README]
+= mr.h
+:revdate: 2024-08-31
+:author: Paweł Kruszec
+:email: pakruszec@gmail.com
+
+Mark/Replace Just-In-Time Metaprogramming Experiment
+
+Quickstart::
+----
+cc -o test test.c
+./test
+----
+
+This repository contains a library `mr.h`, which accepts C code with markers and allows you to replace the content between the markers programmatically.
+
+For example, consider this C file:
+[source, c]
+----
+static int numbers[] = {
+// This is a marker named `test`.
+//!mr { test
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+//!mr }
+};
+----
+
+We'll now create a metaprogram that loads that file and generates another C file in-place of the previous one.
+If we invoke this library method like that:
+[source, c]
+----
+// `file` is an `mr_file` instance that contains the contents of the codeblock above
+mr_replace_marker_contents(&file, "test", -1, "5, 4, 3, 2, 1, 0\n", -1);
+----
+
+The `file` instance will contain:
+[source, c]
+----
+static int numbers[] = {
+// This is a marker named `test`.
+//!mr { test
+    5, 4, 3, 2, 1, 0
+//!mr }
+};
+----
+
+== The Problem
+
+Metaprograms in a language like C, which roughly maps to the generated machine code, running almost nothing at compile time, inherently complicate the build process of a project.
+
+In applications, you can pretty easily integrate your metaprograms into the build system.
+The same with static/dynamic libraries distributed in binary form.
+However, if you want to bake something into a header-only library, this won't work, because these libraries _do not_ have a build system.
+
+== The Solution
+
+The idea is that the metaprogram is run by the programmer only when it is needed, and the generated code is committed into the repository.
+This library allows easy substitution of specific code blocks with new code.
+Theoretically, this could be integrated into a continuous integration system.
+
+== The Problem Doesn't Actually Exist
+
+Header-only libraries should be very simple, written in a commonly adopted standard, and easily distributable, usually as one source file.
+Thus, any metaprogramming in such libraries should be avoided.
+
+If the library is strictly tied to generated code, you should instead provide a header-only library generator (a good example of that is link:https://github.com/Dav1dde/glad[glad]).
+
+Pros::
+* Simpler build process -- no need to build & run metaprograms before building the target program
+
+Cons::
+* Not very good when baking big binary data -- leads to big repository
+* Not automated -- stupid humans involved in the process
+
+Despite the problem doesn't exist, I still publish this repository.
+Maybe it will be useful for other tasks than the one it was designed to help with.
